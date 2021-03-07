@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2014 - 2019, The Linux Foundation. All rights reserved.
+* Copyright (c) 2014 - 2020, The Linux Foundation. All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without modification, are permitted
 * provided that the following conditions are met:
@@ -94,11 +94,10 @@ class DppsInfo {
 class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
  public:
   DisplayBuiltIn(DisplayEventHandler *event_handler, HWInfoInterface *hw_info_intf,
-                 BufferSyncHandler *buffer_sync_handler, BufferAllocator *buffer_allocator,
-                 CompManager *comp_manager);
-  DisplayBuiltIn(int32_t display_id, DisplayEventHandler *event_handler,
-                 HWInfoInterface *hw_info_intf, BufferSyncHandler *buffer_sync_handler,
                  BufferAllocator *buffer_allocator, CompManager *comp_manager);
+  DisplayBuiltIn(int32_t display_id, DisplayEventHandler *event_handler,
+                 HWInfoInterface *hw_info_intf, BufferAllocator *buffer_allocator,
+                 CompManager *comp_manager);
   virtual ~DisplayBuiltIn();
 
   virtual DisplayError Init();
@@ -108,7 +107,7 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
   virtual DisplayError ControlPartialUpdate(bool enable, uint32_t *pending);
   virtual DisplayError DisablePartialUpdateOneFrame();
   virtual DisplayError SetDisplayState(DisplayState state, bool teardown,
-                                       int *release_fence);
+                                       shared_ptr<Fence> *release_fence);
   virtual void SetIdleTimeoutMs(uint32_t active_ms);
   virtual DisplayError SetDisplayMode(uint32_t mode);
   virtual DisplayError GetRefreshRateRange(uint32_t *min_refresh_rate, uint32_t *max_refresh_rate);
@@ -165,6 +164,7 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
   bool handle_idle_timeout_ = false;
   bool commit_event_enabled_ = false;
   bool reset_panel_ = false;
+  bool disable_dyn_fps_ = false;
   DppsInfo dpps_info_ = {};
   FrameTriggerMode trigger_mode_debug_ = kFrameTriggerMax;
   float level_remainder_ = 0.0f;
@@ -176,7 +176,7 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
   Locker dpps_pu_lock_;
   bool dpps_pu_nofiy_pending_ = false;
   bool first_cycle_ = true;
-  int previous_retire_fence_ = -1;
+  shared_ptr<Fence> previous_retire_fence_ = nullptr;
   enum class SamplingState { Off, On } samplingState = SamplingState::Off;
   DisplayError setColorSamplingState(SamplingState state);
 

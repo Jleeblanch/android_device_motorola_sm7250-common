@@ -139,11 +139,12 @@ int GLLayerStitchImpl::CreateContext(bool secure) {
   return 0;
 }
 
-int GLLayerStitchImpl::Blit(const std::vector<StitchParams> &stitch_params, int *release_fence_fd) {
+int GLLayerStitchImpl::Blit(const std::vector<StitchParams> &stitch_params,
+                            shared_ptr<Fence> *release_fence) {
   DTRACE_SCOPED();
 
-  std::vector<int> acquire_fences;
-  std::vector<int> release_fences;
+  std::vector<shared_ptr<Fence>> acquire_fences;
+  std::vector<shared_ptr<Fence>> release_fences;
   bool can_batch = !NeedsGLScissor(stitch_params);
   for (auto &info : stitch_params) {
     SetSourceBuffer(info.src_hnd);
@@ -152,12 +153,14 @@ int GLLayerStitchImpl::Blit(const std::vector<StitchParams> &stitch_params, int 
     ClearWithTransparency(info.scissor_rect);
     glDrawArrays(GL_TRIANGLES, 0, 3);
 
-    acquire_fences.push_back(info.src_acquire_fence_fd);
+    acquire_fences.push_back(info.src_acquire_fence);
 
     if (!can_batch) {
       // Trigger flush and cache release fence.
       WaitOnInputFence(acquire_fences);
-      release_fences.push_back(CreateOutputFence());
+      shared_ptr<Fence> temp_release_fence = nullptr;
+      CreateOutputFence(&temp_release_fence);
+      release_fences.push_back(temp_release_fence);
       acquire_fences = {};
     }
   }
@@ -165,14 +168,10 @@ int GLLayerStitchImpl::Blit(const std::vector<StitchParams> &stitch_params, int 
   if (can_batch) {
     // Create output fence for client to wait on.
     WaitOnInputFence(acquire_fences);
-    *release_fence_fd = CreateOutputFence();
+    CreateOutputFence(release_fence);
   } else {
     // Merge all fd's and return one.
-    *release_fence_fd = GetMergedFd(release_fences, __CLASS__, false);
-    // Close all intermediate fences.
-    for (auto &fence : release_fences) {
-      close(fence);
-    }
+    *release_fence = Fence::Merge(release_fences, false);
   }
 
   return 0;
