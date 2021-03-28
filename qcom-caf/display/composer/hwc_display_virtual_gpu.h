@@ -68,6 +68,7 @@ class HWCDisplayVirtualGPU : public HWCDisplayVirtual,
   virtual HWC2::Error Validate(uint32_t *out_num_types, uint32_t *out_num_requests);
   virtual HWC2::Error Present(int32_t *out_retire_fence);
   virtual HWC2::Error SetOutputBuffer(buffer_handle_t buf, int32_t release_fence);
+  virtual bool FreezeScreen();
 
  private:
   // SyncTask methods.
@@ -76,6 +77,9 @@ class HWCDisplayVirtualGPU : public HWCDisplayVirtual,
 
   SyncTask<ColorConvertTaskCode> color_convert_task_;
   GLColorConvert *gl_color_convert_;
+
+  bool disable_animation_ = false;
+  bool animation_in_progress_ = false;
 };
 
 }  // namespace sdm

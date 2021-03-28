@@ -29,6 +29,7 @@
 
 #include <core/buffer_allocator.h>
 #include <utils/debug.h>
+#include <utils/constants.h>
 #include <sync/sync.h>
 #include <vector>
 #include <string>
@@ -418,8 +419,10 @@ Return<int32_t> HWCSession::toggleScreenUpdate(bool on) {
 Return<int32_t> HWCSession::setIdleTimeout(uint32_t value) {
   SEQUENCE_WAIT_SCOPE_LOCK(locker_[HWC_DISPLAY_PRIMARY]);
 
+  int inactive_ms = IDLE_TIMEOUT_INACTIVE_MS;
+  Debug::Get()->GetProperty(IDLE_TIME_INACTIVE_PROP, &inactive_ms);
   if (hwc_display_[HWC_DISPLAY_PRIMARY]) {
-    hwc_display_[HWC_DISPLAY_PRIMARY]->SetIdleTimeoutMs(value);
+    hwc_display_[HWC_DISPLAY_PRIMARY]->SetIdleTimeoutMs(value, inactive_ms);
     return 0;
   }
 
@@ -645,7 +648,6 @@ int32_t HWCSession::setDisplayBrightness(uint32_t display, float brightness) {
   return SetDisplayBrightness(static_cast<hwc2_display_t>(display), brightness);
 }
 
-#ifndef DISPLAY_CONFIG_VERSION_OPTIMAL
 Return<int32_t> HWCSession::setDisplayAnimating(uint64_t display_id, bool animating ) {
   return CallDisplayFunction(display_id,
                              &HWCDisplay::SetDisplayAnimating, animating);
@@ -890,6 +892,7 @@ Return<bool> HWCSession::isBuiltInDisplay(uint32_t disp_id) {
   return false;
 }
 
+#ifndef DISPLAY_CONFIG_VERSION_OPTIMAL
 Return<void> HWCSession::getSupportedDSIBitClks(uint32_t disp_id,
                                                 getSupportedDSIBitClks_cb _hidl_cb) {
   SCOPE_LOCK(locker_[disp_id]);
@@ -1111,13 +1114,13 @@ Return<int32_t> HWCSession::setQsyncMode(uint32_t disp_id, IDisplayConfig::Qsync
 }
 
 Return<bool> HWCSession::isSmartPanelConfig(uint32_t disp_id, uint32_t config_id) {
-  if (disp_id != qdutils::DISPLAY_PRIMARY) {
-    return false;
-  }
-
   SCOPE_LOCK(locker_[disp_id]);
   if (!hwc_display_[disp_id]) {
     DLOGE("Display %d is not created yet.", disp_id);
+    return false;
+  }
+
+  if (hwc_display_[disp_id]->GetDisplayClass() != DISPLAY_CLASS_BUILTIN) {
     return false;
   }
 
@@ -1176,6 +1179,24 @@ Return<int32_t> HWCSession::registerQsyncCallback(const sp<IDisplayQsyncCallback
 
   return 0;
 }
+
+Return<int32_t> HWCSession::allowIdleFallback() {
+  SEQUENCE_WAIT_SCOPE_LOCK(locker_[HWC_DISPLAY_PRIMARY]);
+
+  uint32_t active_ms = 0;
+  uint32_t inactive_ms = 0;
+  Debug::GetIdleTimeoutMs(&active_ms, &inactive_ms);
+  if (hwc_display_[HWC_DISPLAY_PRIMARY]) {
+    DLOGI("enable idle time active_ms:%d inactive_ms:%d",active_ms,inactive_ms);
+    hwc_display_[HWC_DISPLAY_PRIMARY]->SetIdleTimeoutMs(active_ms, inactive_ms);
+    is_idle_time_up_ = true;
+    return 0;
+  }
+
+  DLOGW("Display = %d is not connected.", HWC_DISPLAY_PRIMARY);
+  return -ENODEV;
+}
+
 #endif
 
 }  // namespace sdm

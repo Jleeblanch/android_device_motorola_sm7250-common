@@ -77,7 +77,6 @@ class GLCommon {
 
  private:
   EGLImageWrapper image_wrapper_;
-  const private_handle_t *dst_hnd_ = nullptr;
 };
 
 }  // namespace sdm

@@ -72,7 +72,7 @@ DisplayError HWPeripheralDRM::Init() {
 }
 
 void HWPeripheralDRM::InitDestScaler() {
-  if (hw_panel_info_.is_primary_panel && hw_resource_.hw_dest_scalar_info.count) {
+  if (hw_resource_.hw_dest_scalar_info.count) {
     // Do all destination scaler block resource allocations here.
     dest_scaler_blocks_used_ = 1;
     if (kQuadSplit == mixer_attributes_.split_type) {
@@ -611,7 +611,7 @@ DisplayError HWPeripheralDRM::DozeSuspend(const HWQosData &qos_data, int *releas
 }
 
 DisplayError HWPeripheralDRM::SetDisplayAttributes(uint32_t index) {
-  if (doze_poms_switch_done_ || pending_poms_switch_) {
+  if (doze_poms_switch_done_ || pending_poms_switch_ || bit_clk_rate_) {
     return kErrorNotSupported;
   }
 

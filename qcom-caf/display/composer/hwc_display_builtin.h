@@ -91,8 +91,8 @@ class HWCDisplayBuiltIn : public HWCDisplay, public SyncTask<LayerStitchTaskCode
   virtual HWC2::Error RestoreColorTransform();
   virtual int Perform(uint32_t operation, ...);
   virtual int HandleSecureSession(const std::bitset<kSecureMax> &secure_session,
-                                  bool *power_on_pending);
-  virtual void SetIdleTimeoutMs(uint32_t timeout_ms);
+                                  bool *power_on_pending, bool is_active_secure_display);
+  virtual void SetIdleTimeoutMs(uint32_t timeout_ms, uint32_t inactive_ms);
   virtual HWC2::Error SetFrameDumpConfig(uint32_t count, uint32_t bit_mask_layer_type,
                                          int32_t format, bool post_processed);
   virtual int FrameCaptureAsync(const BufferInfo &output_buffer_info, bool post_processed);
@@ -171,6 +171,8 @@ class HWCDisplayBuiltIn : public HWCDisplay, public SyncTask<LayerStitchTaskCode
   int GetBwCode(const DisplayConfigVariableInfo &attr);
   void SetBwLimitHint(bool enable);
   void SetPartialUpdate(DisplayConfigFixedInfo fixed_info);
+  uint32_t GetUpdatingAppLayersCount();
+  void ValidateScalingForDozeMode();
 
   // SyncTask methods.
   void OnTask(const LayerStitchTaskCode &task_code,
@@ -221,6 +223,8 @@ class HWCDisplayBuiltIn : public HWCDisplay, public SyncTask<LayerStitchTaskCode
   bool is_smart_panel_ = false;
   const char *kDisplayBwName = "display_bw";
   bool enable_bw_limits_ = false;
+  bool enhance_idle_time_ = false;
+  bool scaling_in_doze_ = false;
 };
 
 }  // namespace sdm

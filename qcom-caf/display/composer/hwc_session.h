@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2020, The Linux Foundation. All rights reserved.
  * Not a Contribution.
  *
  * Copyright 2015 The Android Open Source Project
@@ -21,14 +21,15 @@
 #define __HWC_SESSION_H__
 
 #ifndef DISPLAY_CONFIG_VERSION_OPTIMAL
-#include <vendor/display/config/1.15/IDisplayConfig.h>
+#include <vendor/display/config/1.16/IDisplayConfig.h>
 #else
-#include <vendor/display/config/1.0/IDisplayConfig.h>
+#include <vendor/display/config/1.9/IDisplayConfig.h>
 #endif
 #include <vendor/qti/hardware/display/composer/2.0/IQtiComposerClient.h>
 
 #include <core/core_interface.h>
 #include <utils/locker.h>
+#include <utils/constants.h>
 #include <qd_utils.h>
 #include <display_config.h>
 #include <vector>
@@ -54,11 +55,11 @@
 namespace sdm {
 
 #ifndef DISPLAY_CONFIG_VERSION_OPTIMAL
-using vendor::display::config::V1_15::IDisplayConfig;
+using vendor::display::config::V1_16::IDisplayConfig;
 using vendor::display::config::V1_10::IDisplayCWBCallback;
 using vendor::display::config::V1_15::IDisplayQsyncCallback;
 #else
-using vendor::display::config::V1_0::IDisplayConfig;
+using vendor::display::config::V1_9::IDisplayConfig;
 #endif
 
 using ::android::hardware::Return;
@@ -285,6 +286,7 @@ class HWCSession : hwc2_device_t, HWCUEventListener, IDisplayConfig, public qCli
   static Locker power_state_[HWCCallbacks::kNumDisplays];
   static Locker hdr_locker_[HWCCallbacks::kNumDisplays];
   static Locker display_config_locker_;
+  static Locker system_locker_;
 
  private:
 #ifndef DISPLAY_CONFIG_VERSION_OPTIMAL
@@ -402,7 +404,6 @@ class HWCSession : hwc2_device_t, HWCUEventListener, IDisplayConfig, public qCli
   Return<void> displayBWTransactionPending(displayBWTransactionPending_cb _hidl_cb) override;
   Return<int32_t> IdlePowerCollapse(bool enable, bool synchronous);
 
-#ifndef DISPLAY_CONFIG_VERSION_OPTIMAL
   Return<int32_t> setDisplayAnimating(uint64_t display_id, bool animating) override;
   Return<int32_t> setDisplayIndex(IDisplayConfig::DisplayTypeExt disp_type,
                                   uint32_t base, uint32_t count) override;
@@ -424,6 +425,7 @@ class HWCSession : hwc2_device_t, HWCUEventListener, IDisplayConfig, public qCli
   Return<int32_t> setPanelLuminanceAttributes(uint32_t disp_id, float min_lum,
                                               float max_lum) override;
   Return<bool> isBuiltInDisplay(uint32_t disp_id) override;
+#ifndef DISPLAY_CONFIG_VERSION_OPTIMAL
   Return<void> getSupportedDSIBitClks(uint32_t disp_id,
                                       getSupportedDSIBitClks_cb _hidl_cb) override;
   Return<uint64_t> getDSIClk(uint32_t disp_id) override;
@@ -437,6 +439,7 @@ class HWCSession : hwc2_device_t, HWCUEventListener, IDisplayConfig, public qCli
   Return<int32_t> createVirtualDisplay(uint32_t width, uint32_t height, int32_t format) override;
   Return<bool> isRotatorSupportedFormat(int hal_format, bool ubwc) override;
   Return<int32_t> registerQsyncCallback(const sp<IDisplayQsyncCallback> &callback) override;
+  Return<int32_t> allowIdleFallback() override;
 #endif
 
   // QClient methods
@@ -538,6 +541,7 @@ class HWCSession : hwc2_device_t, HWCUEventListener, IDisplayConfig, public qCli
   bool power_state_transition_[HWCCallbacks::kNumDisplays] = {};
   std::bitset<HWCCallbacks::kNumDisplays> display_ready_;
   bool secure_session_active_ = false;
+  bool is_idle_time_up_ = false;
 };
 }  // namespace sdm
 

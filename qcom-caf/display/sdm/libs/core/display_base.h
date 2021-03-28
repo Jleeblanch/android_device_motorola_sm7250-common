@@ -122,7 +122,7 @@ class DisplayBase : public DisplayInterface {
     return kErrorNotSupported;
   }
   virtual DisplayError SetVSyncState(bool enable);
-  virtual void SetIdleTimeoutMs(uint32_t active_ms) {}
+  virtual void SetIdleTimeoutMs(uint32_t active_ms, uint32_t inactive_ms) {}
   virtual DisplayError SetMixerResolution(uint32_t width, uint32_t height);
   virtual DisplayError GetMixerResolution(uint32_t *width, uint32_t *height);
   virtual DisplayError SetFrameBufferConfig(const DisplayConfigVariableInfo &variable_info);
@@ -163,6 +163,9 @@ class DisplayBase : public DisplayInterface {
   virtual DisplayError colorSamplingOn();
   virtual DisplayError colorSamplingOff();
   virtual DisplayError ReconfigureDisplay();
+  virtual DisplayError ClearLUTs() {
+    return kErrorNotSupported;
+  }
 
  protected:
   const char *kBt2020Pq = "bt2020_pq";
@@ -242,7 +245,8 @@ class DisplayBase : public DisplayInterface {
   std::string current_color_mode_ = "hal_native";
   bool hw_recovery_logs_captured_ = false;
   int disable_hw_recovery_dump_ = 0;
-  HWQosData default_qos_data_;
+  HWQosData cached_qos_data_;
+  uint32_t default_clock_hz_ = 0;
   bool drop_hw_vsync_ = false;
   uint32_t current_refresh_rate_ = 0;
   bool drop_skewed_vsync_ = false;

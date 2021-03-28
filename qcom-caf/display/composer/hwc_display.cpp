@@ -171,10 +171,6 @@ HWC2::Error HWCColorMode::CacheColorModeWithRenderIntent(ColorMode mode, RenderI
   return HWC2::Error::None;
 }
 
-void HWCColorMode::SetApplyMode(bool enable) {
-  apply_mode_ = enable;
-}
-
 HWC2::Error HWCColorMode::ApplyCurrentColorModeWithRenderIntent(bool hdr_present) {
   // If panel does not support color modes, do not set color mode.
   if (color_mode_map_.size() <= 1) {
@@ -203,6 +199,13 @@ HWC2::Error HWCColorMode::ApplyCurrentColorModeWithRenderIntent(bool hdr_present
        curr_dynamic_range_ == kHdrType) {
       // fall back to display_p3/display_bt2020 SDR mode if there is no HDR mode
       mode_string = color_mode_map_[current_color_mode_][current_render_intent_][kSdrType];
+    }
+
+    if (mode_string.empty() &&
+       (current_color_mode_ == ColorMode::BT2100_PQ) && (curr_dynamic_range_ == kSdrType)) {
+      // fallback to hdr mode.
+      mode_string = color_mode_map_[current_color_mode_][current_render_intent_][kHdrType];
+      DLOGI("fall back to hdr mode for ColorMode::BT2100_PQ kSdrType");
     }
   }
 
@@ -965,15 +968,11 @@ HWC2::Error HWCDisplay::SetPowerMode(HWC2::PowerMode mode, bool teardown) {
       }
       break;
     case HWC2::PowerMode::On:
-      if (color_mode_) {
-        color_mode_->SetApplyMode(true);
-      }
+      RestoreColorTransform();
       state = kStateOn;
       break;
     case HWC2::PowerMode::Doze:
-      if (color_mode_) {
-        color_mode_->SetApplyMode(true);
-      }
+      RestoreColorTransform();
       state = kStateDoze;
       break;
     case HWC2::PowerMode::DozeSuspend:
@@ -1238,18 +1237,32 @@ HWC2::Error HWCDisplay::SetClientTarget(buffer_handle_t target, int32_t acquire_
 
 HWC2::Error HWCDisplay::SetActiveConfig(hwc2_config_t config) {
   DTRACE_SCOPED();
-
-  // Cache refresh rate set by client.
-  DisplayConfigVariableInfo info = {};
-  GetDisplayAttributesForConfig(INT(config), &info);
-  active_refresh_rate_ = info.fps;
-
   hwc2_config_t current_config = 0;
   GetActiveConfig(&current_config);
   if (current_config == config) {
     return HWC2::Error::None;
   }
+
+  // DRM driver expects DRM_PREFERRED_MODE to be set as part of first commit.
+  if (!IsFirstCommitDone()) {
+    // Store client's config.
+    // Set this as part of post commit.
+    pending_first_commit_config_ = true;
+    pending_first_commit_config_index_ = config;
+    DLOGI("Defer config change to %d until first commit", UINT32(config));
+    return HWC2::Error::None;
+  } else if (pending_first_commit_config_) {
+    // Config override request from client.
+    // Honour latest request.
+    pending_first_commit_config_ = false;
+  }
+
   DLOGI("Active configuration changed to: %d", config);
+
+  // Cache refresh rate set by client.
+  DisplayConfigVariableInfo info = {};
+  GetDisplayAttributesForConfig(INT(config), &info);
+  active_refresh_rate_ = info.fps;
 
   // Store config index to be applied upon refresh.
   pending_config_ = true;
@@ -1320,6 +1333,7 @@ DisplayError HWCDisplay::HandleEvent(DisplayEvent event) {
       break;
     }
     case kInvalidateDisplay:
+    case kIdlePowerCollapse:
     case kThermalEvent: {
       SEQUENCE_WAIT_SCOPE_LOCK(HWCSession::locker_[id_]);
       validated_ = false;
@@ -1343,8 +1357,6 @@ DisplayError HWCDisplay::HandleEvent(DisplayEvent event) {
               id_);
       }
     } break;
-    case kIdlePowerCollapse:
-      break;
     default:
       DLOGW("Unknown event: %d", event);
       break;
@@ -1729,10 +1741,17 @@ HWC2::Error HWCDisplay::PostCommitLayerStack(int32_t *out_retire_fence) {
   flush_ = false;
   skip_commit_ = false;
 
+  // Handle pending config changes.
+  if (pending_first_commit_config_) {
+    DLOGI("Changing active config to %d", UINT32(pending_first_commit_config_));
+    pending_first_commit_config_ = false;
+    SetActiveConfig(pending_first_commit_config_index_);
+  }
+
   return status;
 }
 
-void HWCDisplay::SetIdleTimeoutMs(uint32_t timeout_ms) {
+void HWCDisplay::SetIdleTimeoutMs(uint32_t timeout_ms, uint32_t inactive_ms) {
   return;
 }
 
@@ -2203,7 +2222,7 @@ int HWCDisplay::GetVisibleDisplayRect(hwc_rect_t *visible_rect) {
 }
 
 int HWCDisplay::HandleSecureSession(const std::bitset<kSecureMax> &secure_sessions,
-                                    bool *power_on_pending) {
+                                    bool *power_on_pending, bool is_active_secure_display) {
   if (!power_on_pending) {
     return -EINVAL;
   }
@@ -2216,12 +2235,12 @@ int HWCDisplay::HandleSecureSession(const std::bitset<kSecureMax> &secure_sessio
         DLOGE("SetPowerMode failed. Error = %d", error);
       }
     } else {
-      *power_on_pending = true;
+      *power_on_pending = (pending_power_mode_ != HWC2::PowerMode::Off) ? true : false;
     }
 
-    DLOGI("SecureDisplay state changed from %d to %d for display %" PRId64 "-%d",
+    DLOGI("SecureDisplay state changed from %d to %d for display %" PRId64 " %d-%d",
           active_secure_sessions_.test(kSecureDisplay), secure_sessions.test(kSecureDisplay),
-          id_, type_);
+          id_, sdm_id_, type_);
   }
   active_secure_sessions_ = secure_sessions;
   return 0;

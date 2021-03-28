@@ -519,7 +519,11 @@ DisplayError HWDeviceDRM::Init() {
 
 DisplayError HWDeviceDRM::Deinit() {
   DisplayError err = kErrorNone;
-  if (!first_cycle_) {
+  // Power-on will set the CRTC_SET_MODE to valid on external display. Without first commit,
+  // if external is disconnected, CRTC_SET_MODE is not set to NULL, this leads to a synchronization
+  // issue and external is blank for sometime. So on successful power-on (i.e NullCommit),
+  // set CRTC_SET_MODE to NULL for proper sync.
+  if (!first_cycle_ || null_display_commit_) {
     // A null-commit is needed only if the first commit had gone through. e.g., If a pluggable
     // display is plugged in and plugged out immediately, HWDeviceDRM::Deinit() may be called
     // before any commit happened on the device. The driver may have removed any not-in-use
@@ -987,6 +991,8 @@ DisplayError HWDeviceDRM::PowerOn(const HWQosData &qos_data, int *release_fence)
   buffer_sync_handler_->SyncWait(INT(retire_fence_t), kTimeoutMsPowerOn);
   Sys::close_(INT(retire_fence_t));
 
+  last_power_mode_ = DRMPowerMode::ON;
+
   return kErrorNone;
 }
 
@@ -1020,13 +1026,15 @@ DisplayError HWDeviceDRM::PowerOff(bool teardown) {
   buffer_sync_handler_->SyncWait(retire_fence, kTimeoutMsPowerOff);
   Sys::close_(retire_fence);
 
+  last_power_mode_ = DRMPowerMode::OFF;
+
   return kErrorNone;
 }
 
 DisplayError HWDeviceDRM::Doze(const HWQosData &qos_data, int *release_fence) {
   DTRACE_SCOPED();
 
-  if (!first_cycle_) {
+  if (first_cycle_ || ((!switch_mode_valid_) && (last_power_mode_ != DRMPowerMode::OFF))) {
     pending_doze_ = true;
     return kErrorDeferred;
   }
@@ -1061,6 +1069,8 @@ DisplayError HWDeviceDRM::Doze(const HWQosData &qos_data, int *release_fence) {
   int retire_fence = static_cast<int>(retire_fence_t);
   buffer_sync_handler_->SyncWait(retire_fence, kTimeoutMsDoze);
   Sys::close_(retire_fence);
+
+  last_power_mode_ = DRMPowerMode::DOZE;
 
   return kErrorNone;
 }
@@ -1101,6 +1111,8 @@ DisplayError HWDeviceDRM::DozeSuspend(const HWQosData &qos_data, int *release_fe
   int retire_fence = static_cast<int>(retire_fence_t);
   buffer_sync_handler_->SyncWait(retire_fence, kTimeoutMsDozeSuspend);
   Sys::close_(retire_fence);
+
+  last_power_mode_ = DRMPowerMode::DOZE_SUSPEND;
 
   return kErrorNone;
 }
@@ -1765,11 +1777,6 @@ DisplayError HWDeviceDRM::GetPPFeaturesVersion(PPFeatureVersion *vers) {
 }
 
 DisplayError HWDeviceDRM::SetPPFeatures(PPFeaturesConfig *feature_list) {
-  if (pending_doze_) {
-    DLOGI("Doze state pending!! Skip for now");
-    return kErrorNone;
-  }
-
   int ret = 0;
   PPFeatureInfo *feature = NULL;
 
@@ -2251,6 +2258,7 @@ DisplayError HWDeviceDRM::NullCommit(bool synchronous, bool retain_planes) {
     return kErrorHardware;
   }
 
+  null_display_commit_ = true;
   return kErrorNone;
 }
 

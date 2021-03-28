@@ -175,12 +175,8 @@ int GLColorConvertImpl::Blit(const private_handle_t *src_hnd, const private_hand
   glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, kFullScreenTexCoords);
   glDrawArrays(GL_TRIANGLES, 0, 3);
 
-  int in_fence_fd = -1;
-  buffer_sync_handler_.SyncMerge(src_acquire_fence_fd, dst_acquire_fence_fd, &in_fence_fd);
-  if (in_fence_fd >= 0) {
-    std::vector<int> fence = {in_fence_fd};
-    WaitOnInputFence(fence);
-  }
+  std::vector<int> fence = {src_acquire_fence_fd, dst_acquire_fence_fd};
+  WaitOnInputFence(fence);
 
   // Create output fence for client to wait on.
   *release_fence_fd = CreateOutputFence();

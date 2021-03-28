@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2014 - 2019, The Linux Foundation. All rights reserved.
+* Copyright (c) 2014 - 2020, The Linux Foundation. All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without modification, are permitted
 * provided that the following conditions are met:
@@ -254,9 +254,9 @@ DisplayError Strategy::Purge() {
   return kErrorNone;
 }
 
-DisplayError Strategy::SetIdleTimeoutMs(uint32_t active_ms) {
+DisplayError Strategy::SetIdleTimeoutMs(uint32_t active_ms, uint32_t inactive_ms) {
   if (strategy_intf_) {
-    return strategy_intf_->SetIdleTimeoutMs(active_ms);
+    return strategy_intf_->SetIdleTimeoutMs(active_ms, inactive_ms);
   }
 
   return kErrorNotSupported;

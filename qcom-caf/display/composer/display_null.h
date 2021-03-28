@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
+* Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are
@@ -57,7 +57,7 @@ class DisplayNull : public DisplayInterface {
   virtual DisplayError Prepare(LayerStack *layer_stack);
   virtual bool IsPrimaryDisplay() { return true; }
   virtual bool IsUnderscanSupported() { return true; }
-  virtual void SetIdleTimeoutMs(uint32_t active_ms) { }
+  virtual void SetIdleTimeoutMs(uint32_t active_ms, uint32_t inactive_ms) { }
   virtual DisplayError GetDisplayIdentificationData(uint8_t *out_port, uint32_t *out_data_size,
                                                     uint8_t *out_data);
   virtual bool CheckResourceState() { return false; }
@@ -94,7 +94,7 @@ class DisplayNull : public DisplayInterface {
   MAKE_NO_OP(GetDefaultColorMode(string *))
   MAKE_NO_OP(ApplyDefaultDisplayMode())
   MAKE_NO_OP(SetCursorPosition(int, int))
-  MAKE_NO_OP(SetRefreshRate(uint32_t, bool))
+  MAKE_NO_OP(SetRefreshRate(uint32_t, bool, bool))
   MAKE_NO_OP(GetPanelBrightness(float *))
   MAKE_NO_OP(GetPanelMaxBrightness(uint32_t *))
   MAKE_NO_OP(GetRefreshRate(uint32_t *))
@@ -121,6 +121,7 @@ class DisplayNull : public DisplayInterface {
   MAKE_NO_OP(colorSamplingOn());
   MAKE_NO_OP(colorSamplingOff());
   MAKE_NO_OP(SetDisplayElapseTime(uint64_t))
+  MAKE_NO_OP(ClearLUTs())
 
  protected:
   DisplayConfigVariableInfo default_variable_config_ = {};
