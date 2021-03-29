@@ -231,7 +231,7 @@ PRODUCT_PACKAGES += \
     libtinyxml \
     libvulkan \
     memtrack.lito \
-    vendor.display.config@1.15 \
+    vendor.display.config@1.16.vendor \
     vendor.qti.hardware.display.allocator-service \
     vendor.qti.hardware.display.allocator@1.0-service \
     vendor.qti.hardware.display.allocator@1.0.vendor \
