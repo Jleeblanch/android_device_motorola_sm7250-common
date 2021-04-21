@@ -126,14 +126,12 @@ PRODUCT_PACKAGES += \
     android.hardware.bluetooth.audio@2.0-impl \
     audio.a2dp.default \
     audio.bluetooth.default \
-    audio.primary.lito \
     audio.r_submix.default \
     audio.usb.default \
     libaudio-resampler \
     libaudioroute \
     libhdmiedid \
     libhfp \
-    libqcompostprocbundle \
     libqcomvisualizer \
     libqcomvoiceprocessing \
     libsndmonitor \
