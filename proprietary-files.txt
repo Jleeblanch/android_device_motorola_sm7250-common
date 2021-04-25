@@ -503,11 +503,6 @@ vendor/lib64/libhta_hexagon_runtime.so
 vendor/bin/expat
 vendor/bin/motobox
 
-# Perf
-vendor/bin/msm_irqbalance
-vendor/lib64/libqti-perfd-client.so
-vendor/lib64/vendor.qti.hardware.perf@2.0.so
-
 # Perf - QSMP
 vendor/bin/vendor.qti.qspmhal@1.0-service
 vendor/etc/init/vendor.qti.qspmhal@1.0-service.rc
